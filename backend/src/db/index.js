@@ -53,6 +53,36 @@ async function tx(fn) {
   }
 }
 
+/**
+ * Inserção em lote (multi-row) — muito mais rápida que inserir linha a linha,
+ * essencial quando o banco está remoto (Neon).
+ *
+ * @param client  cliente da transação (deve ter .query)
+ * @param table   nome da tabela
+ * @param columns array de nomes de colunas
+ * @param rows    array de arrays de valores (mesma ordem de columns)
+ */
+async function bulkInsert(client, table, columns, rows) {
+  if (!rows.length) return;
+
+  // Postgres limita a ~65535 parâmetros por statement.
+  const maxParams = 60000;
+  const rowsPerChunk = Math.max(1, Math.floor(maxParams / columns.length));
+
+  for (let start = 0; start < rows.length; start += rowsPerChunk) {
+    const chunk = rows.slice(start, start + rowsPerChunk);
+    const params = [];
+    const valuesSql = chunk.map((row, r) => {
+      const placeholders = columns.map((_, c) => `$${r * columns.length + c + 1}`);
+      params.push(...row);
+      return `(${placeholders.join(',')})`;
+    }).join(',');
+
+    const sql = `INSERT INTO ${table} (${columns.join(',')}) VALUES ${valuesSql}`;
+    await client.query(sql, params);
+  }
+}
+
 /** Cria as tabelas (idempotente) a partir do schema.sql. */
 async function initSchema() {
   const schemaPath = path.join(__dirname, 'schema.sql');
@@ -61,4 +91,4 @@ async function initSchema() {
   console.log('Schema PostgreSQL verificado/criado.');
 }
 
-module.exports = { pool, query, getOne, getAll, tx, initSchema };
+module.exports = { pool, query, getOne, getAll, tx, bulkInsert, initSchema };

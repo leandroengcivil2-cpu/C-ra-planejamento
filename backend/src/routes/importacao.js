@@ -1,7 +1,7 @@
 const express = require('express');
 const multer = require('multer');
 const path = require('path');
-const { getAll, tx } = require('../db');
+const { getAll, tx, bulkInsert } = require('../db');
 const { parseCronograma } = require('../parsers/cronogramaParser');
 const { parseOrcamento } = require('../parsers/orcamentoParser');
 const { authMiddleware, requirePerfil } = require('../middleware/auth');
@@ -60,24 +60,19 @@ router.post(
           );
         }
 
-        for (const t of tarefas) {
-          await client.query(
-            `INSERT INTO tarefas (versao_id, edt, nome, critica, origem, pacote, pavimento,
-               linha_balanco, inicio_lb, termino_lb, inicio, termino,
-               pct_prevista, pct_concluida, desvio_dias, nivel)
-             VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16)`,
-            [vid, t.edt, t.nome, t.critica, t.origem, t.pacote, t.pavimento,
-             t.linha_balanco, t.inicio_lb, t.termino_lb, t.inicio, t.termino,
-             t.pct_prevista, t.pct_concluida, t.desvio_dias, t.nivel]
-          );
-        }
+        await bulkInsert(client, 'tarefas',
+          ['versao_id', 'edt', 'nome', 'critica', 'origem', 'pacote', 'pavimento',
+           'linha_balanco', 'inicio_lb', 'termino_lb', 'inicio', 'termino',
+           'pct_prevista', 'pct_concluida', 'desvio_dias', 'nivel'],
+          tarefas.map(t => [vid, t.edt, t.nome, t.critica, t.origem, t.pacote, t.pavimento,
+            t.linha_balanco, t.inicio_lb, t.termino_lb, t.inicio, t.termino,
+            t.pct_prevista, t.pct_concluida, t.desvio_dias, t.nivel])
+        );
 
-        for (const lb of linhaBalanco) {
-          await client.query(
-            `INSERT INTO lb_planejado (versao_id, data, pavimento, atividade) VALUES ($1,$2,$3,$4)`,
-            [vid, lb.data, lb.pavimento, lb.atividade]
-          );
-        }
+        await bulkInsert(client, 'lb_planejado',
+          ['versao_id', 'data', 'pavimento', 'atividade'],
+          linhaBalanco.map(lb => [vid, lb.data, lb.pavimento, lb.atividade])
+        );
 
         await client.query(
           `INSERT INTO import_logs (tipo, nome_arquivo, status, resumo, usuario_id)
@@ -129,17 +124,13 @@ router.post(
           );
           const vid = versaoRes.rows[0].id;
 
-          for (const item of itens) {
-            await client.query(
-              `INSERT INTO orcamento_itens
-                 (versao_id, tipo_orcamento, codigo, alternativo, descricao, unidade,
-                  qtde_servico, custo_servico, total, pct_total, nivel, eh_folha)
-               VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12)`,
-              [vid, tipo, item.codigo, item.alternativo, item.descricao, item.unidade,
-               item.qtde_servico, item.custo_servico, item.total, item.pct_total,
-               item.nivel, item.eh_folha]
-            );
-          }
+          await bulkInsert(client, 'orcamento_itens',
+            ['versao_id', 'tipo_orcamento', 'codigo', 'alternativo', 'descricao', 'unidade',
+             'qtde_servico', 'custo_servico', 'total', 'pct_total', 'nivel', 'eh_folha'],
+            itens.map(item => [vid, tipo, item.codigo, item.alternativo, item.descricao, item.unidade,
+              item.qtde_servico, item.custo_servico, item.total, item.pct_total,
+              item.nivel, item.eh_folha])
+          );
         }
 
         await client.query(
