@@ -30,7 +30,12 @@ app.use('/api/lb', lbRoutes);
 app.use('/api/cronograma', cronogramaRoutes);
 app.use('/api/orcamento', orcamentoRoutes);
 
-// Serve o frontend em produção (trim evita falha por espaço extra vindo do .bat)
+app.get('/api/health', (req, res) => {
+  res.json({ ok: true, timestamp: new Date().toISOString() });
+});
+
+// Serve o frontend em produção (DEVE vir depois das rotas /api).
+// O catch-all '*' devolve index.html para as rotas do React Router.
 if ((process.env.NODE_ENV || '').trim() === 'production') {
   const frontendPath = path.join(__dirname, '../../frontend/dist');
   app.use(express.static(frontendPath));
@@ -38,10 +43,6 @@ if ((process.env.NODE_ENV || '').trim() === 'production') {
     res.sendFile(path.join(frontendPath, 'index.html'));
   });
 }
-
-app.get('/api/health', (req, res) => {
-  res.json({ ok: true, timestamp: new Date().toISOString() });
-});
 
 app.use((err, req, res, next) => {
   console.error(err);
