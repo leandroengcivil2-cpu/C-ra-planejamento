@@ -1,0 +1,25 @@
+# Dependências
+node_modules/
+
+# Variáveis de ambiente (segredos — nunca subir!)
+.env
+backend/.env
+
+# Build do frontend (gerado no deploy)
+frontend/dist/
+
+# Banco SQLite legado (não usado mais)
+*.db
+*.db-shm
+*.db-wal
+
+# Uploads temporários
+backend/uploads/
+
+# Logs
+*.log
+npm-debug.log*
+
+# Sistema
+.DS_Store
+Thumbs.db

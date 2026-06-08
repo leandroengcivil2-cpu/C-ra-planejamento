@@ -1,0 +1,16 @@
+# Blueprint do Render — cria o web service automaticamente.
+# Para usar: no Render, "New +" → "Blueprint" → aponte para este repositório.
+services:
+  - type: web
+    name: cora-arthaus
+    runtime: node
+    plan: free
+    buildCommand: npm run build
+    startCommand: npm start
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: JWT_SECRET
+        generateValue: true   # Render gera uma chave segura automaticamente
+      - key: DATABASE_URL
+        sync: false           # você cola a connection string do Neon manualmente

@@ -1,0 +1,15 @@
+{
+  "name": "cora-arthaus",
+  "version": "1.0.0",
+  "description": "Corá Arthaus — Gestão de Obra (backend + frontend)",
+  "private": true,
+  "scripts": {
+    "build": "cd frontend && npm install && npm run build && cd ../backend && npm install",
+    "start": "cd backend && node src/index.js",
+    "dev:backend": "cd backend && npm run dev",
+    "dev:frontend": "cd frontend && npm run dev"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}

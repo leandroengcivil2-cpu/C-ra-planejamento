@@ -1,0 +1,31 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  html { font-family: 'Inter', system-ui, sans-serif; }
+  body { @apply bg-slate-50 text-slate-800; }
+}
+
+@layer components {
+  .card { @apply bg-white rounded-xl shadow-sm border border-slate-200 p-6; }
+  .btn-primary {
+    @apply bg-cora-600 text-white px-4 py-2 rounded-lg hover:bg-cora-700
+           transition-colors disabled:opacity-50 disabled:cursor-not-allowed font-medium text-sm;
+  }
+  .btn-secondary {
+    @apply bg-white text-slate-700 border border-slate-300 px-4 py-2 rounded-lg
+           hover:bg-slate-50 transition-colors font-medium text-sm;
+  }
+  .input {
+    @apply w-full border border-slate-300 rounded-lg px-3 py-2 text-sm
+           focus:outline-none focus:ring-2 focus:ring-cora-500 focus:border-transparent;
+  }
+  .label { @apply block text-sm font-medium text-slate-700 mb-1; }
+
+  /* Semáforo */
+  .semaforo-verde  { @apply bg-emerald-500; }
+  .semaforo-amarelo { @apply bg-amber-400; }
+  .semaforo-vermelho { @apply bg-red-500; }
+  .semaforo-cinza  { @apply bg-slate-400; }
+}
