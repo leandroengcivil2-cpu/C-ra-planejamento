@@ -155,13 +155,18 @@ CREATE TABLE IF NOT EXISTS import_logs (
 );
 
 -- ============================================================
--- DADOS INICIAIS (senha MVP: admin123)
+-- DADOS INICIAIS — usuários iniciais (login por e-mail, sem senha)
 -- ============================================================
 
 INSERT INTO users (nome, email, senha_hash, perfil)
-VALUES ('Administrador', 'admin@coraarthaus.com.br', 'mvp', 'admin')
+VALUES ('Leandro Oliveira', 'leandro.oliveira@sejahype.com.br', 'sem_senha', 'gestor')
+ON CONFLICT (email) DO NOTHING;
+
+-- Usuários legados (mantidos para não quebrar acessos existentes)
+INSERT INTO users (nome, email, senha_hash, perfil)
+VALUES ('Administrador', 'admin@coraarthaus.com.br', 'sem_senha', 'admin')
 ON CONFLICT (email) DO NOTHING;
 
 INSERT INTO users (nome, email, senha_hash, perfil)
-VALUES ('Leandro Oliveira', 'leandro@coraarthaus.com.br', 'mvp', 'gestor')
+VALUES ('Leandro Oliveira', 'leandro@coraarthaus.com.br', 'sem_senha', 'gestor')
 ON CONFLICT (email) DO NOTHING;

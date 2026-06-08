@@ -6,13 +6,13 @@ import { Building2 } from 'lucide-react';
 export default function LoginPage() {
   const { login, loading } = useAuth();
   const navigate = useNavigate();
-  const [form, setForm] = useState({ email: '', senha: '' });
+  const [email, setEmail] = useState('');
   const [erro, setErro] = useState('');
 
   async function handleSubmit(e) {
     e.preventDefault();
     setErro('');
-    const res = await login(form.email, form.senha);
+    const res = await login(email);
     if (res.ok) {
       navigate('/', { replace: true });
     } else {
@@ -28,10 +28,13 @@ export default function LoginPage() {
             <Building2 size={28} className="text-white" />
           </div>
           <h1 className="text-2xl font-bold text-white">Corá Arthaus</h1>
-          <p className="text-cora-300 text-sm mt-1">Gestão de Obra — Acesso Restrito</p>
+          <p className="text-cora-300 text-sm mt-1">Gestão de Obra</p>
         </div>
 
         <div className="bg-white rounded-2xl shadow-2xl p-8">
+          <h2 className="font-semibold text-slate-800 text-lg mb-1">Entrar</h2>
+          <p className="text-sm text-slate-500 mb-5">Informe o e-mail cadastrado pela sua equipe.</p>
+
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
               <label className="label">E-mail</label>
@@ -39,21 +42,10 @@ export default function LoginPage() {
                 type="email"
                 className="input"
                 placeholder="seu@email.com.br"
-                value={form.email}
-                onChange={e => setForm(f => ({ ...f, email: e.target.value }))}
+                value={email}
+                onChange={e => setEmail(e.target.value)}
                 required
                 autoFocus
-              />
-            </div>
-            <div>
-              <label className="label">Senha</label>
-              <input
-                type="password"
-                className="input"
-                placeholder="••••••••"
-                value={form.senha}
-                onChange={e => setForm(f => ({ ...f, senha: e.target.value }))}
-                required
               />
             </div>
 
@@ -69,7 +61,7 @@ export default function LoginPage() {
           </form>
 
           <p className="text-xs text-slate-400 text-center mt-6">
-            Senha padrão inicial: <span className="font-mono">admin123</span>
+            Acesso restrito à equipe.<br />Não tem acesso? Peça ao gestor para cadastrar seu e-mail.
           </p>
         </div>
       </div>

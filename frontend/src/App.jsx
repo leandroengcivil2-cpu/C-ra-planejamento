@@ -7,6 +7,7 @@ import LinhaBalaPage from './pages/LinhaBalancoPage';
 import ImportacaoPage from './pages/ImportacaoPage';
 import CronogramaPage from './pages/CronogramaPage';
 import OrcamentoPage from './pages/OrcamentoPage';
+import UsuariosPage from './pages/UsuariosPage';
 
 function PrivateRoute({ children, perfis }) {
   const { user } = useAuth();
@@ -32,6 +33,14 @@ function AppRoutes() {
           element={
             <PrivateRoute perfis={['gestor', 'admin']}>
               <ImportacaoPage />
+            </PrivateRoute>
+          }
+        />
+        <Route
+          path="usuarios"
+          element={
+            <PrivateRoute perfis={['gestor', 'admin']}>
+              <UsuariosPage />
             </PrivateRoute>
           }
         />

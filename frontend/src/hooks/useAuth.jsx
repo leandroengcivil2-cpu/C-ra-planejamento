@@ -10,10 +10,10 @@ export function AuthProvider({ children }) {
   });
   const [loading, setLoading] = useState(false);
 
-  async function login(email, senha) {
+  async function login(email) {
     setLoading(true);
     try {
-      const { data } = await api.post('/auth/login', { email, senha });
+      const { data } = await api.post('/auth/login', { email });
       localStorage.setItem('cora_token', data.token);
       localStorage.setItem('cora_user', JSON.stringify(data.user));
       setUser(data.user);

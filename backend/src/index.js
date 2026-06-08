@@ -6,6 +6,7 @@ const path = require('path');
 const { initSchema } = require('./db');
 
 const authRoutes = require('./routes/auth');
+const usuariosRoutes = require('./routes/usuarios');
 const importacaoRoutes = require('./routes/importacao');
 const dashboardRoutes = require('./routes/dashboard');
 const lbRoutes = require('./routes/linhaBalanco');
@@ -24,6 +25,7 @@ app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
 // Rotas
 app.use('/api/auth', authRoutes);
+app.use('/api/usuarios', usuariosRoutes);
 app.use('/api/importacao', importacaoRoutes);
 app.use('/api/dashboard', dashboardRoutes);
 app.use('/api/lb', lbRoutes);

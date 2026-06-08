@@ -5,25 +5,25 @@ const { authMiddleware } = require('../middleware/auth');
 
 const router = express.Router();
 
-// Login simples (MVP): senha fixa "admin123" para os usuários iniciais.
-// TODO: substituir por bcrypt.compare(senha, user.senha_hash)
+// Login por e-mail (whitelist): só entra quem está cadastrado e ativo.
+// Sem senha — acesso para equipe interna confiável.
 router.post('/login', async (req, res) => {
-  const { email, senha } = req.body;
-  if (!email || !senha) {
-    return res.status(400).json({ error: 'Email e senha são obrigatórios' });
+  const email = (req.body.email || '').trim().toLowerCase();
+  if (!email) {
+    return res.status(400).json({ error: 'Informe o e-mail' });
   }
 
   try {
-    const user = await getOne('SELECT * FROM users WHERE email = $1 AND ativo = 1', [email]);
+    const user = await getOne('SELECT * FROM users WHERE LOWER(email) = $1 AND ativo = 1', [email]);
 
-    if (!user || senha !== 'admin123') {
-      return res.status(401).json({ error: 'Credenciais inválidas' });
+    if (!user) {
+      return res.status(401).json({ error: 'E-mail não cadastrado. Peça ao gestor para liberar seu acesso.' });
     }
 
     const token = jwt.sign(
       { id: user.id, nome: user.nome, email: user.email, perfil: user.perfil },
       process.env.JWT_SECRET || 'dev_secret',
-      { expiresIn: '8h' }
+      { expiresIn: '30d' }
     );
 
     res.json({
