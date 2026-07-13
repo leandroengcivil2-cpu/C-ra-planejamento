@@ -15,14 +15,16 @@ const CORES = [
   '#1d4ed8','#4d7c0f','#a21caf','#047857','#b91c1c','#6d28d9','#a16207','#1e40af'
 ];
 const SIGLAS = {
-  'Estrutura':'EST','Alvenaria':'ALV','Encunhamento':'ENC','Chapisco/Emboço':'EMB',
-  'Emboço':'EMB','Chapisco externo':'CHE','Emboço externo':'EME','Contrapiso':'CTP',
-  'Impermeabilização':'IMP','Instalações 1':'IN1','Instalações 2':'IN2','Forro':'FOR',
-  'Revestimentos 1':'RV1','Revestimentos Sacada':'RVS','Revestimento de piso':'RVP',
-  'Serralheria':'SER','Portas':'PRT','Limpeza':'LMP','Limpeza Grossa':'LG',
-  'Limpeza Fina':'LF','Pintura 1':'P1','Pintura 2':'P2','Acabamentos 1':'AC1',
-  'Acabamentos 2':'AC2','Churras + shafts':'CHS','Vistorias':'VIS','Montagem balancim':'BAL',
-  'Selador e textura':'SLT','Molduras e tijoletas':'MOL','Pintura (fachada)':'PF','Taliscamento':'TAL'
+  'Estrutura':'EST','Desforma':'DES','Alvenaria':'ALV','Taliscamento':'TAL',
+  'Encunhamento':'ENC','Hidrossanitária':'HID','Elétrica':'ELE','Dados/Voz':'DV',
+  'Gás':'GAS','Teste de gás':'TGA','Teste hidro':'THI','Rede frigorígena':'FRI',
+  'Emboço':'EMB','Contrapiso seco':'CPS','Contrapiso molhado':'CPM','Drywall (estrutura)':'DW',
+  'Hidro drywall':'HDW','Elétrica drywall':'EDW','AC drywall':'ADW','Plaqueamento drywall':'PDW',
+  'Impermeabilização':'IMP','Rev. cerâmico':'RCE','Soleira':'SOL','Cabeamento':'CAB',
+  'Forro':'FOR','Emassamento':'EMA','Pintura 1ª':'P1','Pintura 2ª':'P2',
+  'Limpeza grossa':'LG','Limpeza fina':'LF','Louças/Granito':'LOU','Metais':'MET',
+  'Acab. elétrico':'AEL','Portas':'PRT','Piso vinílico':'PVI','Vistoria':'VIS',
+  'Churrasqueira/Shafts':'CHS'
 };
 function gerarSigla(nome) {
   if (SIGLAS[nome]) return SIGLAS[nome];
