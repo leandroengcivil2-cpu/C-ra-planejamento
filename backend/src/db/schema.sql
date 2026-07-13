@@ -91,6 +91,21 @@ CREATE TABLE IF NOT EXISTS lb_replanejamentos (
   criado_em TIMESTAMPTZ DEFAULT NOW()
 );
 
+-- Plano vigente: sobrescreve datas por (atividade, pavimento) após replanejamento.
+-- A linha de base (lb_planejado) permanece intacta para comparação.
+CREATE TABLE IF NOT EXISTS lb_vigente (
+  id SERIAL PRIMARY KEY,
+  versao_id INTEGER NOT NULL REFERENCES cronograma_versoes(id),
+  atividade TEXT NOT NULL,
+  pavimento TEXT NOT NULL,
+  inicio TEXT NOT NULL,
+  fim TEXT NOT NULL,
+  atualizado_em TIMESTAMPTZ DEFAULT NOW(),
+  UNIQUE(versao_id, atividade, pavimento)
+);
+
+CREATE INDEX IF NOT EXISTS idx_lb_vigente_versao ON lb_vigente(versao_id);
+
 -- ============================================================
 -- ORÇAMENTO
 -- ============================================================

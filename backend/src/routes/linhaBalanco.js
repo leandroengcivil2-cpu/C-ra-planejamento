@@ -105,6 +105,163 @@ router.get('/atividades', authMiddleware, async (req, res) => {
 });
 
 /**
+ * Computa os segmentos da LB (uma barra por atividade×pavimento):
+ * base (linha de base) + vigente (plano atual, com replanejamentos) + realizado.
+ */
+async function computarSegmentos(versaoId) {
+  const base = await getAll(`
+    SELECT atividade, pavimento,
+           MIN(data) as inicio, MAX(data) as fim, COUNT(*) as dias
+    FROM lb_planejado
+    WHERE versao_id = $1 AND atividade IS NOT NULL
+    GROUP BY atividade, pavimento
+  `, [versaoId]);
+
+  const vigenteRows = await getAll(
+    `SELECT atividade, pavimento, inicio, fim FROM lb_vigente WHERE versao_id = $1`, [versaoId]
+  );
+  const vigMap = {};
+  for (const v of vigenteRows) vigMap[`${v.atividade}|${v.pavimento}`] = v;
+
+  const realizado = await getAll(`
+    SELECT atividade, pavimento, MIN(data) as inicio, MAX(data) as fim,
+           COUNT(*) as dias, MAX(pct_avanco) as pct
+    FROM lb_campo GROUP BY atividade, pavimento
+  `);
+  const realMap = {};
+  for (const r of realizado) realMap[`${r.atividade}|${r.pavimento}`] = r;
+
+  return base.map(b => {
+    const chave = `${b.atividade}|${b.pavimento}`;
+    const vig = vigMap[chave];
+    const real = realMap[chave];
+    return {
+      atividade: b.atividade,
+      pavimento: b.pavimento,
+      ordem: ordenarPavimento(b.pavimento),
+      base_inicio: b.inicio,
+      base_fim: b.fim,
+      inicio: vig ? vig.inicio : b.inicio,
+      fim: vig ? vig.fim : b.fim,
+      dias: Number(b.dias),
+      replanejado: !!vig,
+      realizado: real ? { inicio: real.inicio, fim: real.fim, dias: Number(real.dias), pct: real.pct } : null
+    };
+  });
+}
+
+function segmentosResposta(segmentos) {
+  const atividades = [...new Set(segmentos.map(s => s.atividade))];
+  const pavimentos = [...new Set(segmentos.map(s => s.pavimento))]
+    .sort((a, b) => ordenarPavimento(a) - ordenarPavimento(b));
+  const todasDatas = segmentos.flatMap(s => [s.base_inicio, s.fim, s.base_fim, s.inicio]).filter(Boolean).sort();
+  return {
+    segmentos,
+    atividades,
+    pavimentos,
+    periodo: { inicio: todasDatas[0], fim: todasDatas[todasDatas.length - 1] }
+  };
+}
+
+/**
+ * GET /api/lb/segmentos — barras de atividade (base + vigente) para a grade interativa.
+ */
+router.get('/segmentos', authMiddleware, async (req, res) => {
+  try {
+    const versao = await versaoAtiva();
+    if (!versao) return res.json({ segmentos: [], atividades: [], pavimentos: [], periodo: {} });
+    const segmentos = await computarSegmentos(versao.id);
+    res.json(segmentosResposta(segmentos));
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+/**
+ * POST /api/lb/replanejar — move uma atividade num pavimento para nova data de início.
+ * body: { atividade, pavimento, nova_inicio (ISO), motivo, cascata (bool) }
+ * Se cascata=true, desloca a mesma atividade nos pavimentos seguintes pelo mesmo delta,
+ * preservando o ciclo. A linha de base nunca é alterada.
+ */
+router.post('/replanejar', authMiddleware, requirePerfil('gestor', 'admin'), async (req, res) => {
+  const { atividade, pavimento, nova_inicio, motivo, cascata } = req.body;
+  if (!atividade || !pavimento || !nova_inicio) {
+    return res.status(400).json({ error: 'atividade, pavimento e nova_inicio são obrigatórios' });
+  }
+
+  try {
+    const versao = await versaoAtiva();
+    if (!versao) return res.status(400).json({ error: 'Nenhum cronograma ativo' });
+
+    const segmentos = await computarSegmentos(versao.id);
+    const alvo = segmentos.find(s => s.atividade === atividade && s.pavimento === pavimento);
+    if (!alvo) return res.status(404).json({ error: 'Atividade/pavimento não encontrado na LB' });
+
+    const delta = diffDias(alvo.inicio, nova_inicio); // dias a deslocar
+    if (delta === 0) return res.json(segmentosResposta(segmentos));
+
+    const tipo = delta > 0 ? 'atraso' : 'antecipacao';
+    if (tipo === 'atraso' && !motivo) {
+      return res.status(400).json({ error: 'Justificativa é obrigatória para atrasos' });
+    }
+
+    // Alvo: nova posição preservando a duração
+    const duracao = diffDias(alvo.inicio, alvo.fim);
+    await upsertVigente(versao.id, atividade, pavimento, nova_inicio, addDias(nova_inicio, duracao));
+
+    // Cascata: pavimentos da mesma atividade que começam DEPOIS (base) → mesmo delta
+    if (cascata) {
+      const seguintes = segmentos.filter(s =>
+        s.atividade === atividade && s.pavimento !== pavimento && s.base_inicio > alvo.base_inicio
+      );
+      for (const s of seguintes) {
+        await upsertVigente(versao.id, s.atividade, s.pavimento,
+          addDias(s.inicio, delta), addDias(s.fim, delta));
+      }
+    }
+
+    await query(`
+      INSERT INTO lb_replanejamentos (atividade, pavimento_inicio, data_original, nova_data, tipo, motivo, usuario_id)
+      VALUES ($1,$2,$3,$4,$5,$6,$7)
+    `, [atividade, pavimento, alvo.inicio, nova_inicio, tipo, motivo || 'Antecipação', req.user.id]);
+
+    const atualizados = await computarSegmentos(versao.id);
+    res.json({ ...segmentosResposta(atualizados), delta, tipo });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+/**
+ * POST /api/lb/replanejar/reset — volta à linha de base (tudo ou uma atividade).
+ * body: { atividade? }
+ */
+router.post('/replanejar/reset', authMiddleware, requirePerfil('gestor', 'admin'), async (req, res) => {
+  try {
+    const versao = await versaoAtiva();
+    if (!versao) return res.status(400).json({ error: 'Nenhum cronograma ativo' });
+    if (req.body.atividade) {
+      await query('DELETE FROM lb_vigente WHERE versao_id = $1 AND atividade = $2', [versao.id, req.body.atividade]);
+    } else {
+      await query('DELETE FROM lb_vigente WHERE versao_id = $1', [versao.id]);
+    }
+    const segmentos = await computarSegmentos(versao.id);
+    res.json(segmentosResposta(segmentos));
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+async function upsertVigente(versaoId, atividade, pavimento, inicio, fim) {
+  await query(`
+    INSERT INTO lb_vigente (versao_id, atividade, pavimento, inicio, fim)
+    VALUES ($1,$2,$3,$4,$5)
+    ON CONFLICT (versao_id, atividade, pavimento)
+    DO UPDATE SET inicio = EXCLUDED.inicio, fim = EXCLUDED.fim, atualizado_em = NOW()
+  `, [versaoId, atividade, pavimento, inicio, fim]);
+}
+
+/**
  * POST /api/lb/campo — lançamento diário
  */
 router.post('/campo', authMiddleware, requirePerfil('gestor', 'engenheiro', 'admin'), async (req, res) => {
@@ -264,6 +421,18 @@ router.get('/replanejamentos', authMiddleware, async (req, res) => {
 function ordenarPavimento(nome) {
   const idx = ORDEM_PAVIMENTOS.findIndex(p => nome.includes(p.replace('o Pav', '').trim()) || p === nome);
   return idx === -1 ? 99 : idx;
+}
+
+// Diferença em dias corridos entre duas datas ISO (b - a)
+function diffDias(a, b) {
+  return Math.round((new Date(b + 'T00:00:00') - new Date(a + 'T00:00:00')) / 86400000);
+}
+
+// Soma n dias corridos a uma data ISO, retornando ISO
+function addDias(iso, n) {
+  const d = new Date(iso + 'T00:00:00');
+  d.setDate(d.getDate() + n);
+  return d.toISOString().slice(0, 10);
 }
 
 async function verificarCiclo(atividade, pavimento, dataAtual) {
