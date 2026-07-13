@@ -112,85 +112,78 @@ function TimelineLB({ segmentos, pavimentos, periodo, corMap, siglaMap, onDrop, 
   const hoje = hojeISO();
   const hojeLeft = (hoje >= periodo.inicio && hoje <= periodo.fim) ? leftDe(hoje) : null;
 
-  return (
-    <div className="flex border border-slate-200 rounded-lg overflow-hidden">
-      {/* Coluna de pavimentos (fixa) */}
-      <div className="shrink-0 bg-slate-50 border-r border-slate-200" style={{ width: LARG_PAV }}>
-        <div className="border-b border-slate-200 bg-slate-100 flex items-end px-2 text-xs font-semibold text-slate-600"
-          style={{ height: 44 }}>Pavimento</div>
-        {linhas.map(pav => (
-          <div key={pav} className="border-b border-slate-100 flex items-center px-2 text-xs font-medium text-slate-700 whitespace-nowrap"
-            style={{ height: ROW_H }}>{pav}</div>
-        ))}
-      </div>
+  const larguraTotal = LARG_PAV + larguraTL;
 
-      {/* Área da timeline (rolável) */}
-      <div ref={scrollRef} className="overflow-x-auto flex-1" style={{ maxHeight: '68vh' }}>
-        <div style={{ width: larguraTL, position: 'relative' }}>
-          {/* Cabeçalho meses */}
-          <div className="sticky top-0 z-10 bg-slate-100 border-b border-slate-200" style={{ height: 44, position: 'relative' }}>
+  return (
+    <div ref={scrollRef} className="border border-slate-200 rounded-lg overflow-auto" style={{ maxHeight: '72vh' }}>
+      <div style={{ width: larguraTotal, position: 'relative' }}>
+        {/* Cabeçalho (sticky top) */}
+        <div className="sticky top-0 z-30 flex bg-slate-100 border-b border-slate-200" style={{ height: 44 }}>
+          <div className="sticky left-0 z-10 shrink-0 bg-slate-100 border-r border-slate-200 flex items-end px-2 text-xs font-semibold text-slate-600"
+            style={{ width: LARG_PAV }}>Pavimento</div>
+          <div className="relative" style={{ width: larguraTL }}>
             {meses.map((m, i) => (
-              <div key={i} className="absolute top-0 h-full border-l border-slate-200 text-[10px] font-semibold text-slate-600 px-1 pt-1"
-                style={{ left: m.left, width: m.width }}>{m.label}</div>
+              <div key={i} className="absolute top-0 border-l border-slate-200 text-[10px] font-semibold text-slate-600 px-1 pt-1"
+                style={{ left: m.left, width: m.width, height: 44 }}>{m.label}</div>
             ))}
           </div>
-
-          {/* Linhas */}
-          <div style={{ position: 'relative' }}>
-            {/* Linha do "hoje" */}
-            {hojeLeft != null && (
-              <div className="absolute top-0 bottom-0 z-20 pointer-events-none" style={{ left: hojeLeft, width: 2, background: '#ef4444' }} />
-            )}
-
-            {linhas.map(pav => {
-              const segs = segmentos.filter(s => s.pavimento === pav);
-              return (
-                <div key={pav} className="border-b border-slate-100 relative" style={{ height: ROW_H }}>
-                  {segs.map(s => {
-                    const cor = corMap[s.atividade];
-                    const sel = selecionada === s.atividade;
-                    const arrastando = drag && drag.atividade === s.atividade && drag.pavimento === s.pavimento;
-                    const offset = arrastando && drag.moveu ? drag.deltaSemanas * 7 * DIA_W : 0;
-                    const mostraBase = s.replanejado;
-                    return (
-                      <div key={s.pavimento + s.atividade}>
-                        {/* Fantasma da linha de base */}
-                        {mostraBase && (
-                          <div className="absolute rounded border border-dashed"
-                            style={{
-                              left: leftDe(s.base_inicio), top: 6, height: ROW_H - 12,
-                              width: Math.max(DIA_W, (diffDias(s.base_inicio, s.base_fim)+1) * DIA_W),
-                              borderColor: cor, opacity: 0.5
-                            }}
-                            title={`Linha de base: ${fmtBR(s.base_inicio)}–${fmtBR(s.base_fim)}`} />
-                        )}
-                        {/* Barra vigente (arrastável) */}
-                        <div
-                          onPointerDown={(e) => {
-                            e.preventDefault();
-                            setDrag({ atividade: s.atividade, pavimento: s.pavimento, origInicio: s.inicio,
-                              startX: e.clientX, deltaSemanas: 0, moveu: false });
-                          }}
-                          className={`absolute rounded flex items-center justify-center cursor-grab active:cursor-grabbing select-none ${sel ? 'ring-2 ring-offset-1 ring-slate-800' : ''}`}
-                          style={{
-                            left: leftDe(s.inicio) + offset, top: 5, height: ROW_H - 10,
-                            width: Math.max(DIA_W * 2, (diffDias(s.inicio, s.fim)+1) * DIA_W),
-                            backgroundColor: cor, zIndex: arrastando ? 30 : 5,
-                            boxShadow: arrastando ? '0 4px 12px rgba(0,0,0,0.3)' : 'none'
-                          }}
-                          title={`${s.atividade} — ${s.pavimento}\n${fmtBR(s.inicio)} a ${fmtBR(s.fim)}${s.replanejado ? ' (replanejado)' : ''}\nArraste para replanejar · clique para ver ciclo`}>
-                          <span className="text-[8px] font-bold text-white leading-none px-0.5 truncate">
-                            {siglaMap[s.atividade]}
-                          </span>
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              );
-            })}
-          </div>
         </div>
+
+        {/* Linha do "hoje" (abaixo do cabeçalho, atrás dos rótulos) */}
+        {hojeLeft != null && (
+          <div className="absolute z-0 pointer-events-none" style={{ left: LARG_PAV + hojeLeft, top: 44, bottom: 0, width: 2, background: '#ef4444' }} />
+        )}
+
+        {/* Linhas: rótulo fixo à esquerda + barras, no MESMO elemento */}
+        {linhas.map(pav => {
+          const segs = segmentos.filter(s => s.pavimento === pav);
+          const ehFase = FASES_EDIFICIO.includes(pav);
+          return (
+            <div key={pav} className="flex border-b border-slate-100" style={{ height: ROW_H }}>
+              <div className={`sticky left-0 z-10 shrink-0 border-r border-slate-200 flex items-center px-2 text-xs whitespace-nowrap ${ehFase ? 'bg-slate-50 font-semibold text-slate-500 italic' : 'bg-white font-medium text-slate-700'}`}
+                style={{ width: LARG_PAV }}>{pav}</div>
+              <div className="relative" style={{ width: larguraTL }}>
+                {segs.map(s => {
+                  const cor = corMap[s.atividade];
+                  const sel = selecionada === s.atividade;
+                  const arrastando = drag && drag.atividade === s.atividade && drag.pavimento === s.pavimento;
+                  const offset = arrastando && drag.moveu ? drag.deltaSemanas * 7 * DIA_W : 0;
+                  return (
+                    <div key={s.pavimento + s.atividade}>
+                      {s.replanejado && (
+                        <div className="absolute rounded border border-dashed"
+                          style={{
+                            left: leftDe(s.base_inicio), top: 6, height: ROW_H - 12,
+                            width: Math.max(DIA_W, (diffDias(s.base_inicio, s.base_fim)+1) * DIA_W),
+                            borderColor: cor, opacity: 0.5
+                          }}
+                          title={`Linha de base: ${fmtBR(s.base_inicio)}–${fmtBR(s.base_fim)}`} />
+                      )}
+                      <div
+                        onPointerDown={(e) => {
+                          e.preventDefault();
+                          setDrag({ atividade: s.atividade, pavimento: s.pavimento, origInicio: s.inicio,
+                            startX: e.clientX, deltaSemanas: 0, moveu: false });
+                        }}
+                        className={`absolute rounded flex items-center justify-center cursor-grab active:cursor-grabbing select-none ${sel ? 'ring-2 ring-offset-1 ring-slate-800' : ''}`}
+                        style={{
+                          left: leftDe(s.inicio) + offset, top: 5, height: ROW_H - 10,
+                          width: Math.max(DIA_W * 2, (diffDias(s.inicio, s.fim)+1) * DIA_W),
+                          backgroundColor: cor, zIndex: arrastando ? 40 : 5,
+                          boxShadow: arrastando ? '0 4px 12px rgba(0,0,0,0.3)' : 'none'
+                        }}
+                        title={`${s.atividade} — ${s.pavimento}\n${fmtBR(s.inicio)} a ${fmtBR(s.fim)}${s.replanejado ? ' (replanejado)' : ''}\nArraste para replanejar · clique para ver ciclo`}>
+                        <span className="text-[8px] font-bold text-white leading-none px-0.5 truncate">
+                          {siglaMap[s.atividade]}
+                        </span>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          );
+        })}
       </div>
     </div>
   );
