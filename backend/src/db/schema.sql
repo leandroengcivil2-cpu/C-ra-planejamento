@@ -122,6 +122,32 @@ CREATE INDEX IF NOT EXISTS idx_orc_versao ON orcamento_itens(versao_id);
 CREATE INDEX IF NOT EXISTS idx_orc_codigo ON orcamento_itens(codigo);
 
 -- ============================================================
+-- CONTRATAÇÕES (Mapa de Contratações vinculado ao Orçamento)
+-- ============================================================
+
+CREATE TABLE IF NOT EXISTS contratacoes (
+  id SERIAL PRIMARY KEY,
+  descricao TEXT NOT NULL,                 -- serviço/pacote a contratar
+  codigo_eap TEXT,                         -- código do grupo no orçamento (ex: 01.07)
+  descricao_eap TEXT,                      -- nome do grupo (snapshot)
+  tipo_orcamento TEXT CHECK(tipo_orcamento IN ('obra','areas_comuns')),
+  valor_orcado REAL DEFAULT 0,             -- valor orçado do grupo (snapshot)
+  status TEXT NOT NULL DEFAULT 'a_contratar'
+    CHECK(status IN ('a_contratar','em_cotacao','em_negociacao','contratado')),
+  responsavel TEXT,
+  data_limite TEXT,                        -- data-limite para contratar (ISO yyyy-mm-dd)
+  fornecedor TEXT,                         -- preenchido quando contratado
+  valor_contratado REAL,                   -- preenchido quando contratado
+  observacao TEXT,
+  usuario_id INTEGER REFERENCES users(id),
+  criado_em TIMESTAMPTZ DEFAULT NOW(),
+  atualizado_em TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_contratacoes_status ON contratacoes(status);
+CREATE INDEX IF NOT EXISTS idx_contratacoes_eap ON contratacoes(codigo_eap);
+
+-- ============================================================
 -- GESTÃO DE RISCOS
 -- ============================================================
 

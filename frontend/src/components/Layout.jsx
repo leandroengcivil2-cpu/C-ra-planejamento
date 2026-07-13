@@ -2,7 +2,7 @@ import { Outlet, NavLink, useNavigate } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import {
   LayoutDashboard, GitBranch, CalendarDays,
-  DollarSign, Upload, LogOut, Building2, Users
+  DollarSign, Upload, LogOut, Building2, Users, FileSignature
 } from 'lucide-react';
 
 const navItems = [
@@ -10,6 +10,7 @@ const navItems = [
   { to: '/linha-balanco',  icon: GitBranch,        label: 'Linha de Balanço' },
   { to: '/cronograma',     icon: CalendarDays,     label: 'Cronograma' },
   { to: '/orcamento',      icon: DollarSign,       label: 'Orçamento' },
+  { to: '/contratacoes',   icon: FileSignature,    label: 'Contratações' },
   { to: '/importacao',     icon: Upload,           label: 'Importação', perfis: ['gestor','admin'] },
   { to: '/usuarios',       icon: Users,            label: 'Usuários',   perfis: ['gestor','admin'] },
 ];

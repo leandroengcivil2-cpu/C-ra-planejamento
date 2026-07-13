@@ -12,6 +12,7 @@ const dashboardRoutes = require('./routes/dashboard');
 const lbRoutes = require('./routes/linhaBalanco');
 const cronogramaRoutes = require('./routes/cronograma');
 const orcamentoRoutes = require('./routes/orcamento');
+const contratacoesRoutes = require('./routes/contratacoes');
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -31,6 +32,7 @@ app.use('/api/dashboard', dashboardRoutes);
 app.use('/api/lb', lbRoutes);
 app.use('/api/cronograma', cronogramaRoutes);
 app.use('/api/orcamento', orcamentoRoutes);
+app.use('/api/contratacoes', contratacoesRoutes);
 
 app.get('/api/health', (req, res) => {
   res.json({ ok: true, timestamp: new Date().toISOString() });
