@@ -4,8 +4,10 @@ const { authMiddleware, requirePerfil } = require('../middleware/auth');
 
 const router = express.Router();
 
-// Ordem dos 31 pavimentos, de baixo (Térreo) para cima (Cobertura)
+// Ordem dos pavimentos. As fases de edifício (Fundação, Fachada, Elevador...)
+// ficam no rodapé (índices 0-4); os 31 pavimentos vêm em seguida (Térreo->Cobertura).
 const ORDEM_PAVIMENTOS = [
+  'Fundação', 'Fachada 1ª Metade', 'Fachada 2ª Metade', 'Esquadria de Alumínio', 'Elevador',
   'Térreo', 'Mezanino', 'Sob 1', 'Sob 2', 'Sob 3', 'Lazer',
   ...Array.from({ length: 22 }, (_, i) => `${i + 1}º Pav`),
   'Duplex Inferior', 'Duplex Superior', 'Cobertura'

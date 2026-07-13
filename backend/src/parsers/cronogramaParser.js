@@ -134,45 +134,46 @@ function extrairPavimento(nome) {
   return null;
 }
 
-// Mapa de atividade: [teste no nome normalizado, nome limpo da LB]. Ordem = sequência.
+// Atividades PRINCIPAIS por-pavimento (lista definida pelo gestor).
+// Ordem específica → genérica (drywall antes das não-drywall). Retorna o rótulo
+// limpo ou null (atividades fora da lista são ignoradas na LB).
 const MAPA_ATIVIDADE = [
+  // Forro (contém "plaqueamento de forro" — precisa vir antes do plaqueamento)
+  [n => n.includes('forro'), 'Forro'],
+  // Drywall (específicas primeiro)
+  [n => n.includes('hidrossanitaria') && n.includes('drywall'), 'Instalação Hidrossanitária Drywall'],
+  [n => n.includes('eletrica') && n.includes('drywall'), 'Instalação Elétrica Drywall'],
+  [n => n.includes('ar condicionado') && n.includes('drywall'), 'Ar Condicionado Drywall'],
+  [n => n.includes('tratamento de junta'), 'Drywall Plaqueamento'],
+  [n => n.includes('estrutura de divisoria de drywall'), 'Drywall Estrutura'],
+  // Estrutura / vedação
   [n => n.includes('armadura') && n.includes('concretagem'), 'Estrutura'],
-  [n => n.includes('desforma'), 'Desforma'],
   [n => n.includes('vedacao bloco') || (n.includes('bloco ceramico') && n.includes('bloco de concreto')), 'Alvenaria'],
-  [n => n.includes('taliscamento'), 'Taliscamento'],
-  [n => n.includes('encunhamento'), 'Encunhamento'],
-  [n => n.includes('tubulacoes de agua'), 'Hidrossanitária'],
-  [n => n.includes('distribuicao teto') || (n.includes('quadro eletrico')), 'Elétrica'],
-  [n => n.includes('dados e voz'), 'Dados/Voz'],
-  [n => n.includes('rede frigorigena'), 'Rede frigorígena'],
+  [n => n.includes('churrasqueira') || n.includes('dumper'), 'Churrasqueira'],
+  // Instalações 1ª onda
+  [n => n.includes('tubulacoes de agua'), 'Instalação Hidráulica 1'],
+  [n => n.includes('distribuicao teto'), 'Instalação Elétrica 1'],
+  [n => n.includes('dados e voz'), 'Comunicação'],
   [n => n.includes('ramais de gas'), 'Gás'],
-  [n => n.includes('teste') && n.includes('gas'), 'Teste de gás'],
-  [n => n.includes('teste hidrossanitario'), 'Teste hidro'],
-  [n => n.startsWith('emboco'), 'Emboço'],
-  [n => n.includes('contrapiso') && n.includes('seca'), 'Contrapiso seco'],
-  [n => n.includes('contrapiso') && n.includes('molhada'), 'Contrapiso molhado'],
-  [n => n.includes('estrutura de divisoria de drywall'), 'Drywall (estrutura)'],
-  [n => n.includes('hidrossanitaria') && n.includes('drywall'), 'Hidro drywall'],
-  [n => n.includes('eletrica') && n.includes('drywall'), 'Elétrica drywall'],
-  [n => n.includes('ar condicionado') && n.includes('drywall'), 'AC drywall'],
-  [n => n.includes('plaqueamento') && n.includes('drywall'), 'Plaqueamento drywall'],
+  // Acabamento bruto
+  [n => n.startsWith('emboco'), 'Emboço Interno'],
+  [n => n.includes('contrapiso'), 'Contrapiso'],
   [n => n.includes('impermeabilizacao'), 'Impermeabilização'],
-  [n => n.includes('revestimento ceramico'), 'Rev. cerâmico'],
-  [n => n.includes('soleira'), 'Soleira'],
+  [n => n.includes('revestimento ceramico'), 'Revestimento Cerâmico'],
   [n => n.includes('cabeamento'), 'Cabeamento'],
   [n => n.includes('forro em drywall'), 'Forro'],
+  // Pintura / acabamento fino
   [n => n.includes('emassamento'), 'Emassamento'],
-  [n => n.includes('pintura') && n.includes('1'), 'Pintura 1ª'],
-  [n => n.includes('pintura') && n.includes('2'), 'Pintura 2ª'],
-  [n => n.includes('loucas') || n.includes('bancadas de granito'), 'Louças/Granito'],
+  [n => n.includes('pintura') && n.includes('1'), 'Pintura 1ª Demão'],
+  [n => n.includes('pintura') && n.includes('2'), 'Pintura 2ª Demão'],
+  [n => n.includes('limpeza grossa'), 'Limpeza Grossa'],
+  [n => n.includes('loucas') || n.includes('bancadas de granito'), 'Louças'],
   [n => n.includes('metais'), 'Metais'],
-  [n => n.includes('acabamentos de tomada'), 'Acab. elétrico'],
-  [n => n.includes('portas de madeira'), 'Portas'],
-  [n => n.includes('piso vinilico'), 'Piso vinílico'],
-  [n => n.includes('limpeza grossa'), 'Limpeza grossa'],
-  [n => n.includes('limpeza fina'), 'Limpeza fina'],
-  [n => n.includes('vistoria'), 'Vistoria'],
-  [n => n.includes('churrasqueira') || n.includes('dumper'), 'Churrasqueira/Shafts']
+  [n => n.includes('acabamentos de tomada'), 'Acabamentos Elétrico'],
+  [n => n.includes('portas de madeira'), 'Portas de Madeira'],
+  [n => n.includes('piso vinilico'), 'Piso Vinílico'],
+  [n => n.includes('limpeza fina'), 'Limpeza Fina'],
+  [n => n.includes('vistoria'), 'Vistoria Interna']
 ];
 
 function mapearAtividade(nome) {
@@ -182,6 +183,16 @@ function mapearAtividade(nome) {
   }
   return null;
 }
+
+// Fases do edifício (não são por-pavimento): rótulo → EDT do grupo no cronograma.
+// Cada uma vira uma "faixa" própria no rodapé da grade.
+const FASES_EDIFICIO = [
+  { edt: '1.2.2', label: 'Fundação' },
+  { edt: '1.3.13.1', label: 'Fachada 1ª Metade' },
+  { edt: '1.3.13.2', label: 'Fachada 2ª Metade' },
+  { edt: '1.3.13.2.7', label: 'Esquadria de Alumínio' },
+  { edt: '1.3.14', label: 'Elevador' }
+];
 
 // Gera datas de dias úteis (seg-sex) entre inicio e fim (ISO), inclusive.
 function diasUteis(inicioISO, fimISO) {
@@ -204,6 +215,8 @@ function diasUteis(inicioISO, fimISO) {
  */
 function parseLbFromTasks(tarefas) {
   const entries = [];
+
+  // 1) Atividades principais por pavimento
   for (const t of tarefas) {
     if (!t.inicio_lb || !t.termino_lb) continue;
     const pavimento = extrairPavimento(t.nome);
@@ -214,6 +227,18 @@ function parseLbFromTasks(tarefas) {
       entries.push({ data, pavimento, atividade });
     }
   }
+
+  // 2) Fases do edifício (uma faixa própria, pavimento = próprio rótulo)
+  const porEdt = {};
+  for (const t of tarefas) porEdt[t.edt] = t;
+  for (const fase of FASES_EDIFICIO) {
+    const t = porEdt[fase.edt];
+    if (!t || !t.inicio_lb || !t.termino_lb) continue;
+    for (const data of diasUteis(t.inicio_lb, t.termino_lb)) {
+      entries.push({ data, pavimento: fase.label, atividade: fase.label });
+    }
+  }
+
   return entries;
 }
 

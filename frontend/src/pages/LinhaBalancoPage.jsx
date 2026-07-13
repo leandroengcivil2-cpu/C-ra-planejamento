@@ -15,17 +15,20 @@ const CORES = [
   '#1d4ed8','#4d7c0f','#a21caf','#047857','#b91c1c','#6d28d9','#a16207','#1e40af'
 ];
 const SIGLAS = {
-  'Estrutura':'EST','Desforma':'DES','Alvenaria':'ALV','Taliscamento':'TAL',
-  'Encunhamento':'ENC','Hidrossanitária':'HID','Elétrica':'ELE','Dados/Voz':'DV',
-  'Gás':'GAS','Teste de gás':'TGA','Teste hidro':'THI','Rede frigorígena':'FRI',
-  'Emboço':'EMB','Contrapiso seco':'CPS','Contrapiso molhado':'CPM','Drywall (estrutura)':'DW',
-  'Hidro drywall':'HDW','Elétrica drywall':'EDW','AC drywall':'ADW','Plaqueamento drywall':'PDW',
-  'Impermeabilização':'IMP','Rev. cerâmico':'RCE','Soleira':'SOL','Cabeamento':'CAB',
-  'Forro':'FOR','Emassamento':'EMA','Pintura 1ª':'P1','Pintura 2ª':'P2',
-  'Limpeza grossa':'LG','Limpeza fina':'LF','Louças/Granito':'LOU','Metais':'MET',
-  'Acab. elétrico':'AEL','Portas':'PRT','Piso vinílico':'PVI','Vistoria':'VIS',
-  'Churrasqueira/Shafts':'CHS'
+  'Estrutura':'EST','Alvenaria':'ALV','Churrasqueira':'CHU',
+  'Instalação Hidráulica 1':'HI1','Instalação Elétrica 1':'EL1','Comunicação':'COM','Gás':'GAS',
+  'Emboço Interno':'EMB','Contrapiso':'CTP','Drywall Estrutura':'DWE',
+  'Instalação Hidrossanitária Drywall':'HDW','Instalação Elétrica Drywall':'EDW','Ar Condicionado Drywall':'ADW',
+  'Drywall Plaqueamento':'PDW','Impermeabilização':'IMP','Revestimento Cerâmico':'RCE','Cabeamento':'CAB',
+  'Forro':'FOR','Emassamento':'EMA','Pintura 1ª Demão':'P1','Pintura 2ª Demão':'P2',
+  'Limpeza Grossa':'LG','Louças':'LOU','Metais':'MET','Acabamentos Elétrico':'AEL',
+  'Portas de Madeira':'PRT','Piso Vinílico':'PVI','Limpeza Fina':'LF','Vistoria Interna':'VIS',
+  'Fundação':'FUN','Fachada 1ª Metade':'FA1','Fachada 2ª Metade':'FA2',
+  'Esquadria de Alumínio':'ESQ','Elevador':'ELV'
 };
+// Fases de edifício (não são pavimentos — aparecem no rodapé da grade)
+const FASES_EDIFICIO = ['Fundação', 'Fachada 1ª Metade', 'Fachada 2ª Metade', 'Esquadria de Alumínio', 'Elevador'];
+
 function gerarSigla(nome) {
   if (SIGLAS[nome]) return SIGLAS[nome];
   const limpo = nome.normalize('NFD').replace(/[̀-ͯ]/g, '').trim();
@@ -418,11 +421,17 @@ export default function LinhaBalancoPage() {
       <div className="flex items-start justify-between">
         <div>
           <h1 className="text-2xl font-bold text-slate-800">Linha de Balanço</h1>
-          {!loading && resp.segmentos.length > 0 && (
-            <p className="text-slate-500 text-sm mt-0.5">
-              {resp.atividades.length} atividades · {resp.pavimentos.length} pavimentos · {fmtBR(resp.periodo.inicio)} a {fmtBR(resp.periodo.fim)}
-            </p>
-          )}
+          {!loading && resp.segmentos.length > 0 && (() => {
+            const nFases = resp.pavimentos.filter(p => FASES_EDIFICIO.includes(p)).length;
+            const nPav = resp.pavimentos.length - nFases;
+            const anoIni = resp.periodo.inicio?.slice(0, 4);
+            const anoFim = resp.periodo.fim?.slice(0, 4);
+            return (
+              <p className="text-slate-500 text-sm mt-0.5">
+                {resp.atividades.length} atividades · {nPav} pavimentos + {nFases} fases · {fmtBR(resp.periodo.inicio)}/{anoIni?.slice(2)} a {fmtBR(resp.periodo.fim)}/{anoFim?.slice(2)}
+              </p>
+            );
+          })()}
         </div>
         <div className="flex items-center gap-2">
           {podeReplanejar && temReplan && (
