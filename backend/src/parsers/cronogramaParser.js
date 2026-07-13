@@ -35,7 +35,9 @@ function parseCronograma(buffer) {
   const workbook = XLSX.read(buffer, { type: 'buffer', cellDates: false });
 
   const tarefas = parseCronogramaSheet(workbook);
-  const linhaBalanco = parseLbSheet(workbook);
+  // A Linha de Balanço real (31 pavimentos) vem das tarefas do cronograma,
+  // não da aba "LINHA DE BALANÇO" (que está simplificada com 13 pavimentos).
+  const linhaBalanco = parseLbFromTasks(tarefas);
 
   return { tarefas, linhaBalanco };
 }
@@ -108,65 +110,111 @@ function parseCronogramaSheet(workbook) {
   return tarefas;
 }
 
-function parseLbSheet(workbook) {
-  const sheetName = workbook.SheetNames.find(n => n.includes('LINHA DE BALAN')) || 'LINHA DE BALANÇO';
-  const ws = workbook.Sheets[sheetName];
+// ── Linha de Balanço a partir das tarefas do cronograma ──────────────────────
 
-  if (!ws) {
-    console.warn('Aba LINHA DE BALANÇO não encontrada — pulando');
-    return [];
+// Normaliza texto para comparação (minúsculo, sem acento, espaços colapsados)
+function norm(s) {
+  return String(s || '').normalize('NFD').replace(/[̀-ͯ]/g, '')
+    .toLowerCase().replace(/\s+/g, ' ').trim();
+}
+
+// Extrai o pavimento do sufixo "... - <Pavimento>" e devolve o nome canônico.
+function extrairPavimento(nome) {
+  const n = norm(nome);
+  // 1º a 22º Pavimento
+  let m = n.match(/-\s*(\d{1,2})\s*[ºo]?\s*pav(?:imento)?\s*$/);
+  if (m) return `${parseInt(m[1])}º Pav`;
+  if (/-\s*terreo\s*$/.test(n)) return 'Térreo';
+  if (/-\s*mezanino\s*$/.test(n)) return 'Mezanino';
+  m = n.match(/-\s*sob\.?\s*([123])\s*$/); if (m) return `Sob ${m[1]}`;
+  if (/-\s*lazer\s*$/.test(n)) return 'Lazer';
+  if (/-\s*dup(?:lex)?\.?\s*(inferior|inf)\.?\s*$/.test(n)) return 'Duplex Inferior';
+  if (/-\s*dup(?:lex)?\.?\s*(superior|sup)\.?\s*$/.test(n)) return 'Duplex Superior';
+  if (/-\s*cobertura\s*$/.test(n)) return 'Cobertura';
+  return null;
+}
+
+// Mapa de atividade: [teste no nome normalizado, nome limpo da LB]. Ordem = sequência.
+const MAPA_ATIVIDADE = [
+  [n => n.includes('armadura') && n.includes('concretagem'), 'Estrutura'],
+  [n => n.includes('desforma'), 'Desforma'],
+  [n => n.includes('vedacao bloco') || (n.includes('bloco ceramico') && n.includes('bloco de concreto')), 'Alvenaria'],
+  [n => n.includes('taliscamento'), 'Taliscamento'],
+  [n => n.includes('encunhamento'), 'Encunhamento'],
+  [n => n.includes('tubulacoes de agua'), 'Hidrossanitária'],
+  [n => n.includes('distribuicao teto') || (n.includes('quadro eletrico')), 'Elétrica'],
+  [n => n.includes('dados e voz'), 'Dados/Voz'],
+  [n => n.includes('rede frigorigena'), 'Rede frigorígena'],
+  [n => n.includes('ramais de gas'), 'Gás'],
+  [n => n.includes('teste') && n.includes('gas'), 'Teste de gás'],
+  [n => n.includes('teste hidrossanitario'), 'Teste hidro'],
+  [n => n.startsWith('emboco'), 'Emboço'],
+  [n => n.includes('contrapiso') && n.includes('seca'), 'Contrapiso seco'],
+  [n => n.includes('contrapiso') && n.includes('molhada'), 'Contrapiso molhado'],
+  [n => n.includes('estrutura de divisoria de drywall'), 'Drywall (estrutura)'],
+  [n => n.includes('hidrossanitaria') && n.includes('drywall'), 'Hidro drywall'],
+  [n => n.includes('eletrica') && n.includes('drywall'), 'Elétrica drywall'],
+  [n => n.includes('ar condicionado') && n.includes('drywall'), 'AC drywall'],
+  [n => n.includes('plaqueamento') && n.includes('drywall'), 'Plaqueamento drywall'],
+  [n => n.includes('impermeabilizacao'), 'Impermeabilização'],
+  [n => n.includes('revestimento ceramico'), 'Rev. cerâmico'],
+  [n => n.includes('soleira'), 'Soleira'],
+  [n => n.includes('cabeamento'), 'Cabeamento'],
+  [n => n.includes('forro em drywall'), 'Forro'],
+  [n => n.includes('emassamento'), 'Emassamento'],
+  [n => n.includes('pintura') && n.includes('1'), 'Pintura 1ª'],
+  [n => n.includes('pintura') && n.includes('2'), 'Pintura 2ª'],
+  [n => n.includes('loucas') || n.includes('bancadas de granito'), 'Louças/Granito'],
+  [n => n.includes('metais'), 'Metais'],
+  [n => n.includes('acabamentos de tomada'), 'Acab. elétrico'],
+  [n => n.includes('portas de madeira'), 'Portas'],
+  [n => n.includes('piso vinilico'), 'Piso vinílico'],
+  [n => n.includes('limpeza grossa'), 'Limpeza grossa'],
+  [n => n.includes('limpeza fina'), 'Limpeza fina'],
+  [n => n.includes('vistoria'), 'Vistoria'],
+  [n => n.includes('churrasqueira') || n.includes('dumper'), 'Churrasqueira/Shafts']
+];
+
+function mapearAtividade(nome) {
+  const n = norm(nome);
+  for (const [teste, limpo] of MAPA_ATIVIDADE) {
+    if (teste(n)) return limpo;
   }
+  return null;
+}
 
-  // Lê a planilha como array de arrays
-  const raw = XLSX.utils.sheet_to_json(ws, {
-    header: 1,
-    raw: true,
-    defval: null
-  });
-
-  /**
-   * Estrutura (sheet_to_json indexa a partir da coluna B = índice 0,
-   * pois a dimensão da planilha começa em B1):
-   *   raw[3] (linha 4) = weekday codes
-   *   raw[4] (linha 5) = seriais de data (a partir do índice 2 = coluna D)
-   *   raw[5..17] = pavimentos: raw[i][1] = nome pavimento (col C),
-   *                            raw[i][2..] = atividade (col D em diante)
-   */
-
-  const dateRow = raw[4];        // índice 4 = linha 5
-  const pavimentoRows = raw.slice(5, 18); // linhas 6-18
-
-  if (!dateRow) return [];
-
-  // Extrai datas (colunas D em diante = índice 2)
-  const datas = [];
-  for (let c = 2; c < dateRow.length; c++) {
-    const serial = dateRow[c];
-    if (serial && !isNaN(serial)) {
-      datas.push({ colIdx: c, iso: excelDateToISO(serial) });
-    }
+// Gera datas de dias úteis (seg-sex) entre inicio e fim (ISO), inclusive.
+function diasUteis(inicioISO, fimISO) {
+  const out = [];
+  const d = new Date(inicioISO + 'T00:00:00');
+  const fim = new Date(fimISO + 'T00:00:00');
+  let guard = 0;
+  while (d <= fim && guard++ < 2000) {
+    const dow = d.getDay();
+    if (dow !== 0 && dow !== 6) out.push(d.toISOString().slice(0, 10));
+    d.setDate(d.getDate() + 1);
   }
+  return out;
+}
 
-  const lbEntries = [];
-
-  for (const pavRow of pavimentoRows) {
-    if (!pavRow) continue;
-    const pavimento = String(pavRow[1] || '').trim().replace(/;$/, '');
+/**
+ * Constrói a Linha de Balanço (31 pavimentos) a partir das tarefas do cronograma.
+ * Cada tarefa "<Atividade> - <Pavimento>" com datas de linha de base vira um
+ * segmento; expandimos em dias úteis para alimentar a grade/segmentos/histograma.
+ */
+function parseLbFromTasks(tarefas) {
+  const entries = [];
+  for (const t of tarefas) {
+    if (!t.inicio_lb || !t.termino_lb) continue;
+    const pavimento = extrairPavimento(t.nome);
     if (!pavimento) continue;
-
-    for (const { colIdx, iso } of datas) {
-      const atividade = pavRow[colIdx];
-      if (atividade && typeof atividade === 'string' && atividade.trim()) {
-        lbEntries.push({
-          data: iso,
-          pavimento,
-          atividade: atividade.trim()
-        });
-      }
+    const atividade = mapearAtividade(t.nome);
+    if (!atividade) continue;
+    for (const data of diasUteis(t.inicio_lb, t.termino_lb)) {
+      entries.push({ data, pavimento, atividade });
     }
   }
-
-  return lbEntries;
+  return entries;
 }
 
 module.exports = { parseCronograma };

@@ -4,11 +4,11 @@ const { authMiddleware, requirePerfil } = require('../middleware/auth');
 
 const router = express.Router();
 
-// Ordem dos pavimentos de baixo para cima (eixo Y da LB)
+// Ordem dos 31 pavimentos, de baixo (Térreo) para cima (Cobertura)
 const ORDEM_PAVIMENTOS = [
-  'Térro', 'Térreo', '2o Pav', '3o Pav', '4o Pav', '5o Pav',
-  '6o Pav', '7o Pav', '8o Pav', 'Ático',
-  'Fachada Frente', 'Fachada Fundos', 'Fachada Lat. Dir.', 'Fachada Lat. Esq'
+  'Térreo', 'Mezanino', 'Sob 1', 'Sob 2', 'Sob 3', 'Lazer',
+  ...Array.from({ length: 22 }, (_, i) => `${i + 1}º Pav`),
+  'Duplex Inferior', 'Duplex Superior', 'Cobertura'
 ];
 
 async function versaoAtiva() {
@@ -419,7 +419,7 @@ router.get('/replanejamentos', authMiddleware, async (req, res) => {
 // ── helpers ────────────────────────────────────────────────────
 
 function ordenarPavimento(nome) {
-  const idx = ORDEM_PAVIMENTOS.findIndex(p => nome.includes(p.replace('o Pav', '').trim()) || p === nome);
+  const idx = ORDEM_PAVIMENTOS.indexOf(String(nome).trim());
   return idx === -1 ? 99 : idx;
 }
 
