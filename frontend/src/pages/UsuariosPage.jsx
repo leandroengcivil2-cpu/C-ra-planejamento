@@ -7,6 +7,7 @@ const PERFIS = [
   { valor: 'gestor', label: 'Gestor', desc: 'Acesso total: importação, replanejamento, relatórios' },
   { valor: 'engenheiro', label: 'Engenheiro de Campo', desc: 'Lançamentos diários e visualização' },
   { valor: 'diretoria', label: 'Diretoria', desc: 'Somente leitura: Dashboard e Curva S' },
+  { valor: 'almoxarife', label: 'Almoxarife', desc: 'Almoxarifado: insumos, entradas e fichas de retirada' },
   { valor: 'admin', label: 'Administrador', desc: 'Gestão de usuários e configurações' }
 ];
 

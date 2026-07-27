@@ -8,6 +8,7 @@ import ImportacaoPage from './pages/ImportacaoPage';
 import CronogramaPage from './pages/CronogramaPage';
 import OrcamentoPage from './pages/OrcamentoPage';
 import ContratacaoPage from './pages/ContratacaoPage';
+import AlmoxarifadoPage from './pages/AlmoxarifadoPage';
 import UsuariosPage from './pages/UsuariosPage';
 
 function PrivateRoute({ children, perfis }) {
@@ -30,6 +31,7 @@ function AppRoutes() {
         <Route path="cronograma" element={<CronogramaPage />} />
         <Route path="orcamento" element={<OrcamentoPage />} />
         <Route path="contratacoes" element={<ContratacaoPage />} />
+        <Route path="almoxarifado" element={<AlmoxarifadoPage />} />
         <Route
           path="importacao"
           element={

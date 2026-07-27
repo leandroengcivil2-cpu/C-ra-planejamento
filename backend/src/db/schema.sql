@@ -8,7 +8,7 @@ CREATE TABLE IF NOT EXISTS users (
   nome TEXT NOT NULL,
   email TEXT UNIQUE NOT NULL,
   senha_hash TEXT NOT NULL,
-  perfil TEXT NOT NULL CHECK(perfil IN ('gestor','engenheiro','diretoria','admin')),
+  perfil TEXT NOT NULL CHECK(perfil IN ('gestor','engenheiro','diretoria','admin','almoxarife')),
   ativo INTEGER DEFAULT 1,
   criado_em TIMESTAMPTZ DEFAULT NOW()
 );
@@ -182,6 +182,67 @@ CREATE TABLE IF NOT EXISTS riscos (
 );
 
 -- ============================================================
+-- ALMOXARIFADO (insumos, estoque, plano previsto, fichas de retirada)
+-- ============================================================
+
+CREATE TABLE IF NOT EXISTS insumos (
+  id SERIAL PRIMARY KEY,
+  codigo TEXT,
+  descricao TEXT NOT NULL,
+  unidade TEXT NOT NULL,
+  categoria TEXT,
+  estoque_minimo REAL DEFAULT 0,
+  ativo INTEGER DEFAULT 1,
+  criado_em TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- Movimentações de estoque: entradas (compra/recebimento), saídas (retiradas), ajustes.
+-- O estoque atual = SUM(entrada+ajuste) - SUM(saida).
+CREATE TABLE IF NOT EXISTS estoque_mov (
+  id SERIAL PRIMARY KEY,
+  insumo_id INTEGER NOT NULL REFERENCES insumos(id),
+  tipo TEXT NOT NULL CHECK(tipo IN ('entrada','saida','ajuste')),
+  quantidade REAL NOT NULL,
+  data TEXT NOT NULL,
+  ficha_id INTEGER,
+  motivo TEXT,
+  usuario_id INTEGER REFERENCES users(id),
+  criado_em TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_estoque_mov_insumo ON estoque_mov(insumo_id);
+
+-- Plano de consumo previsto: quanto de cada insumo uma atividade consome POR pavimento.
+CREATE TABLE IF NOT EXISTS plano_insumo (
+  id SERIAL PRIMARY KEY,
+  atividade TEXT NOT NULL,
+  insumo_id INTEGER NOT NULL REFERENCES insumos(id),
+  qtd_por_pavimento REAL NOT NULL DEFAULT 0,
+  UNIQUE(atividade, insumo_id)
+);
+
+-- Ficha de retirada: uma retirada apropriada a um pavimento + atividade.
+CREATE TABLE IF NOT EXISTS fichas_retirada (
+  id SERIAL PRIMARY KEY,
+  data TEXT NOT NULL,
+  pavimento TEXT NOT NULL,
+  atividade TEXT NOT NULL,
+  responsavel TEXT,
+  observacao TEXT,
+  usuario_id INTEGER REFERENCES users(id),
+  criado_em TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS ficha_itens (
+  id SERIAL PRIMARY KEY,
+  ficha_id INTEGER NOT NULL REFERENCES fichas_retirada(id) ON DELETE CASCADE,
+  insumo_id INTEGER NOT NULL REFERENCES insumos(id),
+  quantidade REAL NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_ficha_itens_ficha ON ficha_itens(ficha_id);
+
+-- ============================================================
 -- LOG DE IMPORTAÇÕES
 -- ============================================================
 
@@ -211,3 +272,12 @@ ON CONFLICT (email) DO NOTHING;
 INSERT INTO users (nome, email, senha_hash, perfil)
 VALUES ('Leandro Oliveira', 'leandro@coraarthaus.com.br', 'sem_senha', 'gestor')
 ON CONFLICT (email) DO NOTHING;
+
+-- ============================================================
+-- MIGRAÇÕES idempotentes (bancos já existentes)
+-- ============================================================
+
+-- Permite o perfil 'almoxarife' em bancos criados antes desta versão.
+ALTER TABLE users DROP CONSTRAINT IF EXISTS users_perfil_check;
+ALTER TABLE users ADD CONSTRAINT users_perfil_check
+  CHECK (perfil IN ('gestor','engenheiro','diretoria','admin','almoxarife'));

@@ -4,7 +4,7 @@ const { authMiddleware, requirePerfil } = require('../middleware/auth');
 
 const router = express.Router();
 
-const PERFIS_VALIDOS = ['gestor', 'engenheiro', 'diretoria', 'admin'];
+const PERFIS_VALIDOS = ['gestor', 'engenheiro', 'diretoria', 'admin', 'almoxarife'];
 
 /**
  * GET /api/usuarios — lista todos (gestor/admin).
